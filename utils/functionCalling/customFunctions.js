@@ -1,16 +1,6 @@
-
-// async function aadharVerification({aadharNumber}) {
-//   console.log('aadharVerification', aadharNumber);
-//   return {response: 'OTP sent to your registered mobile number'};
-// };
-
-// async function OTPVerification({otp}) {
-//   console.log('OTPVerification', otp);
-//   return {response: 'OTP verified successfully'};
-// };
-
 const axios = require('axios');
 const xml2js = require('xml2js');
+require('dotenv').config();
 
 async function aadharVerification (aadhaarNumber) {
   const panNumber = `6080220${aadhaarNumber}`;
@@ -39,7 +29,7 @@ async function aadharVerification (aadhaarNumber) {
 
     try {
         const response = await axios.post(
-            'http://137.117.104.94:80/api/ekyc-otp?api_key=kyqak5muymxcrjhc5q57vz9v',
+            `${process.env.EKYC_OTP_URL}?api_key=${process.env.API_KEY}`,
             xmlData,
             {
                 headers: {
@@ -48,29 +38,26 @@ async function aadharVerification (aadhaarNumber) {
                 }
             }
         );
-        console.log('---------', response.data);
         let responseMessage;
         xml2js.parseString(response.data, (err, result) => {          
           responseMessage = result.Response.ResponseMessage[0];
-        }
-        );
-      console.log('---------', responseMessage);
+        });
       if (responseMessage === 'Approved') {
         console.log('---------Approved', aadhaarNumber);
         return {response: 'OTP sent to your registered mobile number'};
-      } if (responseMessage === 'Data Error') {
+      } else if (responseMessage === 'Data Error') {
         console.log('---------Failed', aadhaarNumber);
         return {response: 'Failed to send OTP. Please try again with correct aadhar card number.'};
-      } if (responseMessage == 'OTP Flooding - Please avoid trying to generate the OTP multiple times within short time.'){
+      } else if (responseMessage === 'OTP Flooding - Please avoid trying to generate the OTP multiple times within short time.'){
         console.log('---------OTP Flooding', aadhaarNumber);
         return {response: 'OTP Flooding - Please avoid trying to generate the OTP multiple times within short time.'};
       }
     } catch (error) {
         console.error('Error sending OTP request:', error);
     }
-};
+}
 
-async function OTPVerification(aadhaarNumber,otp) {
+async function OTPVerification(aadhaarNumber, otp) {
     const jsonData = {
         "otp": `${otp}`,
         "stan": "242796",
@@ -80,7 +67,7 @@ async function OTPVerification(aadhaarNumber,otp) {
 
     try {
         const response = await axios.post(
-            'http://137.117.104.94:8080/api/ekyc/v2?api_key=kyqak5muymxcrjhc5q57vz9v',
+            `${process.env.EKYC_VERIFY_URL}?api_key=${process.env.API_KEY}`,
             jsonData,
             {
                 headers: {
@@ -92,18 +79,18 @@ async function OTPVerification(aadhaarNumber,otp) {
             }
         );
         console.log('eKYC Request Response:', response.status);
-        if (response.status === 200){
-        return {response: 'OTP verified successfully'};
+        if (response.status === 200) {
+            return {response: 'OTP verified successfully'};
         } else {
-          return {response: 'The OTP you entered is incorrect. Please try again.'};
+            return {response: 'The OTP you entered is incorrect. Please try again.'};
         }
     } catch (error) {
-      return {response: 'The OTP you entered is incorrect. Please try again.'};
+        console.error('Error verifying OTP:', error);
+        return {response: 'The OTP you entered is incorrect. Please try again.'};
     }
-};
+}
 
 module.exports = {
   aadharVerification,
   OTPVerification
 };
-
